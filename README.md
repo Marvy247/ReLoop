@@ -1,0 +1,2 @@
+B3TR deployed to: 0x9ca37e813baf1cad2eb1269661d1536b1afa9dde
+DigitalTwin deployed to: 0x871879bc4030aab14fb00912c83e105f92fb8167
