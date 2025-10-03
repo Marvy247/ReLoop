@@ -86,7 +86,7 @@ export const AIChatbot: React.FC = () => {
     <>
       {!isOpen && (
         <div className="fixed bottom-4 right-4 z-50 group">
-          <div className="absolute bottom-16 right-0 bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border max-w-xs transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+          <div className="absolute bottom-20 right-0 bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border max-w-xs transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
             <p className="text-sm text-gray-700 dark:text-gray-300">Have a question about sustainability? Ask our AI!</p>
             <div className="absolute top-full right-4 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-white dark:border-t-gray-800"></div>
           </div>
@@ -99,7 +99,7 @@ export const AIChatbot: React.FC = () => {
         </div>
       )}
       {isOpen && (
-        <Card className="fixed bottom-4 right-4 w-96 h-[500px] shadow-2xl z-50 animate-in slide-in-from-bottom-4 duration-300 flex flex-col">
+        <Card className="fixed bottom-24 right-4 w-96 h-[600px] shadow-2xl z-50 animate-in slide-in-from-bottom-4 duration-300 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-lg">
             <div className="flex items-center space-x-2">
               <Bot className="w-5 h-5" />
@@ -109,8 +109,8 @@ export const AIChatbot: React.FC = () => {
               <X className="w-4 h-4" />
             </Button>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 p-0">
-            <div className="flex-1 overflow-y-auto mb-4 space-y-4 p-4">
+          <CardContent className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 p-0 min-h-0">
+            <div className="overflow-y-auto space-y-4 p-4 custom-scrollbar">
               {messages.length === 0 && (
                 <div className="text-center py-8">
                   <Bot className="w-12 h-12 mx-auto mb-4 text-blue-500" />

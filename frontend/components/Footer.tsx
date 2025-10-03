@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="bg-gray-800 text-white py-8 mt-auto">
+    <footer className="bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 py-8 mt-auto">
       <div className="container mx-auto px-4 text-center">
         <p>&copy; 2025 ReLoop. All rights reserved.</p>
         <p className="mt-2">Built on VeChainThor Blockchain for a Sustainable Future</p>

@@ -3,14 +3,13 @@
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, CheckCircle, XCircle, Loader, Image as ImageIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Upload, CheckCircle, XCircle, Loader } from 'lucide-react';
 
 interface RecyclingVerifierProps {
-  onSuccess: (tokenId: string) => void;
+  onFileVerified: (file: File, previewUrl: string) => void;
 }
 
-export const RecyclingVerifier: React.FC<RecyclingVerifierProps> = ({ onSuccess }) => {
+export const RecyclingVerifier: React.FC<RecyclingVerifierProps> = ({ onFileVerified }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [verificationResult, setVerificationResult] = useState<'success' | 'failure' | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -26,20 +25,25 @@ export const RecyclingVerifier: React.FC<RecyclingVerifierProps> = ({ onSuccess 
     setError(null);
     setFileName(file.name);
 
-    // Simulate AI analysis
-    setTimeout(() => {
-      // Simulate a random outcome
-      const isSuccess = Math.random() > 0.3; // 70% chance of success
-      if (isSuccess) {
-        const simulatedTokenId = Math.floor(Math.random() * 1000) + 1;
-        onSuccess(simulatedTokenId.toString());
-        setVerificationResult('success');
-      } else {
-        setVerificationResult('failure');
-        setError('This item does not match a registered Digital Twin. Please try a different item.');
-      }
-      setIsAnalyzing(false);
-    }, 3000);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const previewUrl = reader.result as string;
+
+      // Simulate AI analysis
+      setTimeout(() => {
+        // Simulate a random outcome
+        const isSuccess = Math.random() > 0.3; // 70% chance of success
+        if (isSuccess) {
+          onFileVerified(file, previewUrl);
+          setVerificationResult('success');
+        } else {
+          setVerificationResult('failure');
+          setError('This item does not seem to be a valid product. Please try a different image.');
+        }
+        setIsAnalyzing(false);
+      }, 3000);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDropzoneClick = () => {
@@ -54,9 +58,9 @@ export const RecyclingVerifier: React.FC<RecyclingVerifierProps> = ({ onSuccess 
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto mt-10 shadow-2xl">
+    <Card className="w-full max-w-lg mx-auto shadow-lg">
       <CardHeader>
-        <CardTitle className="text-center text-2xl">AI Recycling Verifier</CardTitle>
+        <CardTitle className="text-center text-2xl">AI Product Verifier</CardTitle>
       </CardHeader>
       <CardContent className="text-center">
         {!fileName ? (
@@ -73,8 +77,8 @@ export const RecyclingVerifier: React.FC<RecyclingVerifierProps> = ({ onSuccess 
             />
             <div className="flex flex-col items-center gap-4">
               <Upload className="w-12 h-12 text-gray-400" />
-              <p className="text-gray-500">Click or drag to upload an image of your item</p>
-              <p className="text-xs text-gray-400">Our AI will verify its Digital Twin.</p>
+              <p className="text-gray-500">Click or drag to upload an image of your product</p>
+              <p className="text-xs text-gray-400">Our AI will verify it before minting.</p>
             </div>
           </div>
         ) : (
@@ -83,7 +87,7 @@ export const RecyclingVerifier: React.FC<RecyclingVerifierProps> = ({ onSuccess 
               <div className="flex flex-col items-center gap-4 animate-pulse">
                 <Loader className="w-16 h-16 text-blue-500 animate-spin" />
                 <p className="text-lg font-semibold">Analyzing...</p>
-                <p className="text-sm text-gray-500">Verifying <span className="font-medium text-gray-700 dark:text-gray-300">{fileName}</span> against blockchain records.</p>
+                <p className="text-sm text-gray-500">Verifying <span className="font-medium text-gray-700 dark:text-gray-300">{fileName}</span>.</p>
               </div>
             )}
 
@@ -91,8 +95,7 @@ export const RecyclingVerifier: React.FC<RecyclingVerifierProps> = ({ onSuccess 
               <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in">
                 <CheckCircle className="w-20 h-20 text-green-500" />
                 <p className="text-xl font-bold text-green-600">Verification Successful!</p>
-                <p className="text-sm text-gray-500">This product is ready for recycling.</p>
-                <Button onClick={handleReset} variant="outline">Verify Another Item</Button>
+                <p className="text-sm text-gray-500">You can now proceed to mint your Digital Twin.</p>
               </div>
             )}
 
