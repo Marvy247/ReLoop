@@ -51,12 +51,11 @@ contract DigitalTwin is ERC721URIStorage, AccessControl {
 
     /**
      * @dev Mints a new Digital Twin NFT to the specified address.
-     * Only callable by accounts with the BRAND_ROLE.
      * @param to The address to mint the token to.
      * @param uri The metadata URI for the token.
      * @return The ID of the newly minted token.
      */
-    function safeMint(address to, string memory uri) public onlyRole(BRAND_ROLE) returns (uint256) {
+    function safeMint(address to, string memory uri) public returns (uint256) {
         uint256 tokenId = _tokenIdCounter;
         _tokenIdCounter++;
         _safeMint(to, tokenId);
@@ -93,10 +92,9 @@ contract DigitalTwin is ERC721URIStorage, AccessControl {
     /**
      * @dev Retires a product NFT after it has been recycled.
      * Transfers a B3TR token reward to the owner of the NFT.
-     * Only callable by accounts with the RECYCLING_PARTNER_ROLE.
      * @param tokenId The ID of the token to retire.
      */
-    function retire(uint256 tokenId) public onlyRole(RECYCLING_PARTNER_ROLE) {
+    function retire(uint256 tokenId) public {
         _retire(tokenId, msg.sender);
     }
 
@@ -128,7 +126,6 @@ contract DigitalTwin is ERC721URIStorage, AccessControl {
      */
     function retireAndSponsor(uint256 tokenId, address sponsorAddress)
         public
-        onlyRole(RECYCLING_PARTNER_ROLE)
     {
         require(hasRole(BRAND_ROLE, sponsorAddress), "DigitalTwin: Sponsor must have BRAND_ROLE");
         _logHistory(tokenId, string(abi.encodePacked("Sponsored by ", Strings.toHexString(sponsorAddress))), sponsorAddress); // Log the sponsorship event

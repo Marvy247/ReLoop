@@ -17,6 +17,12 @@ async function main() {
   await digitalTwin.waitForDeployment();
   const digitalTwinAddress = await digitalTwin.getAddress();
   console.log("DigitalTwin deployed to:", digitalTwinAddress);
+
+  // Transfer some B3TR to DigitalTwin contract for rewards
+  const rewardAmount = await digitalTwin.rewardAmount();
+  const transferAmount = rewardAmount * 1000n; // Transfer enough for 1000 retires
+  await b3tr.transfer(digitalTwinAddress, transferAmount);
+  console.log("Transferred", transferAmount.toString(), "B3TR to DigitalTwin contract");
 }
 
 main().catch((error) => {
