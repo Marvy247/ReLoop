@@ -17,8 +17,8 @@ export default function Home() {
             <Button asChild size="lg" className="text-lg px-8 py-3 hover:scale-105 transition-transform">
               <Link href="/mint">Mint Digital Twin</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="text-lg px-8 py-3 hover:scale-105 transition-transform">
-              <Link href="/recycle">Recycle Product</Link>
+            <Button asChild variant="secondary" size="lg" className="text-lg px-8 py-3 hover:scale-105 transition-transform">
+              <Link href="/dashboard">View My Products</Link>
             </Button>
           </div>
         </div>

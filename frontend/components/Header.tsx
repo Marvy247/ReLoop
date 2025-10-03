@@ -43,8 +43,8 @@ export default function Header() {
             <Link href="/recycle" className="hover:underline">
               Recycle
             </Link>
-            <Link href="/product/1" className="hover:underline">
-              Product
+            <Link href="/dashboard" className="hover:underline">
+              My Products
             </Link>
           </nav>
 
@@ -84,8 +84,8 @@ export default function Header() {
               <Link href="/recycle" className="hover:underline" onClick={toggleMobileMenu}>
                 Recycle
               </Link>
-              <Link href="/product/1" className="hover:underline" onClick={toggleMobileMenu}>
-                Product
+              <Link href="/dashboard" className="hover:underline" onClick={toggleMobileMenu}>
+                My Products
               </Link>
               <div className="pt-4 flex items-center space-x-4">
                 {mounted && (

@@ -2,10 +2,9 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
-
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
@@ -13,7 +12,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  * @dev An ERC721 token that represents a physical product's digital twin.
  * It tracks the product's lifecycle events and integrates with a rewards system.
  */
-contract DigitalTwin is ERC721URIStorage, AccessControl {
+contract DigitalTwin is ERC721URIStorage, ERC721Enumerable, AccessControl {
     uint256 private _tokenIdCounter;
 
     // Roles for access control
@@ -74,12 +73,6 @@ contract DigitalTwin is ERC721URIStorage, AccessControl {
         _logHistory(tokenId, eventDescription, msg.sender);
     }
 
-    /**
-     * @dev Internal function to log a history event for a token.
-     * @param tokenId The ID of the token.
-     * @param eventDescription The description of the event.
-     * @param actor The address performing the action.
-     */
     function _logHistory(uint256 tokenId, string memory eventDescription, address actor) internal {
         historyLog[tokenId].push(ProductHistory({
             timestamp: block.timestamp,
@@ -89,41 +82,23 @@ contract DigitalTwin is ERC721URIStorage, AccessControl {
         emit HistoryLogged(tokenId, eventDescription, actor);
     }
 
-    /**
-     * @dev Retires a product NFT after it has been recycled.
-     * Transfers a B3TR token reward to the owner of the NFT.
-     * @param tokenId The ID of the token to retire.
-     */
     function retire(uint256 tokenId) public {
         _retire(tokenId, msg.sender);
     }
 
-    /**
-     * @dev Internal function containing the core logic for retiring a product NFT.
-     * @param tokenId The ID of the token to retire.
-     * @param actor The address performing the retirement action (e.g., the recycler).
-     */
     function _retire(uint256 tokenId, address actor) internal {
         address tokenOwner = ownerOf(tokenId);
         require(tokenOwner != address(0), "ERC721: owner query for nonexistent token");
 
         _logHistory(tokenId, "Recycled", actor);
 
-        // Transfer the reward to the token owner
         require(b3trToken.balanceOf(address(this)) >= rewardAmount, "Contract has insufficient B3TR balance");
 
         b3trToken.transfer(tokenOwner, rewardAmount);
 
-        // Lock the NFT to prevent future transfers
         isRetired[tokenId] = true;
     }
 
-    /**
-     * @dev Allows a Recycling Partner to retire a product, with an explicit sponsor.
-     * This simulates fee delegation where a brand sponsors the transaction.
-     * @param tokenId The ID of the token to retire.
-     * @param sponsorAddress The address of the brand sponsoring this retirement.
-     */
     function retireAndSponsor(uint256 tokenId, address sponsorAddress)
         public
     {
@@ -132,26 +107,34 @@ contract DigitalTwin is ERC721URIStorage, AccessControl {
         _retire(tokenId, msg.sender);
     }
 
-    /**
-     * @dev Returns the full history log for a given token ID.
-     * @param tokenId The ID of the token.
-     * @return An array of ProductHistory structs.
-     */
     function getHistory(uint256 tokenId) public view returns (ProductHistory[] memory) {
         return historyLog[tokenId];
     }
 
-    /**
-     * @dev Overrides the token update hook to prevent transfers of retired tokens.
-     */
-    function _update(address to, uint256 tokenId, address auth) internal virtual override returns (address) {
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721, ERC721Enumerable)
+        returns (address)
+    {
         address from = _ownerOf(tokenId);
         require(!(isRetired[tokenId] && from != address(0) && to != address(0)), "DigitalTwin: Retired tokens cannot be transferred");
         return super._update(to, tokenId, auth);
     }
 
-    // The functions below support EIP-2981 royalty standard, which can be useful for the secondary market.
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721URIStorage, AccessControl) returns (bool) {
+    function _increaseBalance(address account, uint128 amount) internal virtual override(ERC721, ERC721Enumerable) {
+        super._increaseBalance(account, amount);
+    }
+
+    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+        return super.tokenURI(tokenId);
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721URIStorage, AccessControl, ERC721Enumerable)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 }

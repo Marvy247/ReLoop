@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useWallet } from '@vechain/dapp-kit-react';
 import { getDigitalTwinABI, DIGITAL_TWIN_CONTRACT_ADDRESS } from '@/lib/vechain';
 import { Button } from '@/components/ui/button';
@@ -10,30 +10,38 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { WalletButton } from '@vechain/dapp-kit-react';
 import { useIsMounted } from '@/lib/hooks';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Inbox } from 'lucide-react';
 import { encodeFunctionData } from 'viem';
 import { RewardsBalance } from '@/components/RewardsBalance';
+import { useMyTokens } from '@/lib/hooks/useMyTokens';
 
 export default function RecyclePage() {
-  const [tokenId, setTokenId] = useState('');
-  const [sponsorAddress, setSponsorAddress] = useState('');
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { account: address, requestTransaction } = useWallet();
-  const [isPending, setIsPending] = useState(false);
   const isMounted = useIsMounted();
 
-  // Monitor wallet connection changes
-  useEffect(() => {
-    console.log('Wallet connection status changed:', address ? 'connected' : 'disconnected');
-  }, [address]);
+  // Use the custom hook to fetch all tokens
+  const { tokens, isLoading: isLoadingTokens } = useMyTokens();
+
+  // Filter for recyclable (non-retired) tokens
+  const recyclableTokens = useMemo(() => tokens.filter(token => !token.retired), [tokens]);
+
+  const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [sponsorAddress, setSponsorAddress] = useState('');
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isPending, setIsPending] = useState(false);
+
+  const handleSelectToken = (tokenId: string) => {
+    setSelectedTokenId(tokenId);
+  };
+
+  const handleBackToList = () => {
+    setSelectedTokenId(null);
+    setSponsorAddress('');
+    setErrors({});
+  };
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!tokenId.trim()) {
-      newErrors.tokenId = 'Token ID is required';
-    } else if (isNaN(Number(tokenId)) || Number(tokenId) <= 0) {
-      newErrors.tokenId = 'Token ID must be a positive number';
-    }
     if (sponsorAddress.trim() && !/^0x[a-fA-F0-9]{40}$/.test(sponsorAddress)) {
       newErrors.sponsorAddress = 'Sponsor address must be a valid Ethereum address';
     }
@@ -41,39 +49,20 @@ export default function RecyclePage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const clearForm = () => {
-    setTokenId('');
-    setSponsorAddress('');
-    setErrors({});
-  };
-
   const handleRetire = async () => {
-    if (!validateForm()) return;
-
-    console.log('Checking wallet connection:');
-    console.log('Address:', address);
-
+    if (!validateForm() || !selectedTokenId) return;
     if (!address) {
       toast.error('Wallet not connected');
       return;
     }
 
-    console.log('Retiring with the following data:');
-    console.log('Token ID:', tokenId);
-    console.log('Sponsor Address:', sponsorAddress || 'None');
-
     setIsPending(true);
     try {
-      const digitalTwinABI = getDigitalTwinABI();
-      console.log('Digital Twin ABI:', digitalTwinABI);
-
       const functionName = sponsorAddress.trim() ? 'retireAndSponsor' : 'retire';
-      const args = sponsorAddress.trim() ? [tokenId, sponsorAddress] : [tokenId];
-      console.log('Function name:', functionName);
-      console.log('Function args:', args);
+      const args = sponsorAddress.trim() ? [selectedTokenId, sponsorAddress] : [selectedTokenId];
 
       const encodedData = encodeFunctionData({
-        abi: digitalTwinABI,
+        abi: getDigitalTwinABI(),
         functionName,
         args,
       });
@@ -84,25 +73,19 @@ export default function RecyclePage() {
         data: encodedData,
       };
 
-      console.log('Clause:', clause);
-
       const response = await requestTransaction([clause]);
-      console.log('Transaction response:', response);
 
-      // Check if transaction was successful
       if (response && response.txid) {
         toast.success('Product retired and reward claimed!');
-        clearForm();
+        handleBackToList();
+        // Trigger a refetch of tokens in the hook
+        setTimeout(() => window.dispatchEvent(new Event('fetchMyTokens')), 2000);
       } else {
-        throw new Error('Transaction failed - no txid returned');
+        throw new Error('Transaction failed or was cancelled.');
       }
     } catch (error: unknown) {
-      console.error('Retire error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Transaction failed';
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       toast.error(`Error: ${errorMessage}`);
-
-      // Check if wallet is still connected after error
-      console.log('Wallet address after error:', address);
     } finally {
       setIsPending(false);
     }
@@ -116,7 +99,7 @@ export default function RecyclePage() {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Recycle Product</CardTitle>
-            <CardDescription>Please connect your wallet to retire a product.</CardDescription>
+            <CardDescription>Please connect your wallet to see your products.</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
             <WalletButton />
@@ -126,64 +109,92 @@ export default function RecyclePage() {
     );
   }
 
+  if (selectedTokenId) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 py-12">
+        <div className="container mx-auto px-4 flex flex-col items-center">
+          <Card className="w-full max-w-md lg:max-w-lg mx-auto animate-in fade-in">
+            <CardHeader>
+              <Button variant="ghost" size="sm" className="absolute top-4 left-4" onClick={handleBackToList}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to List
+              </Button>
+              <CardTitle className="pt-8">Retire Digital Twin</CardTitle>
+              <CardDescription>
+                You are about to retire Digital Twin #{selectedTokenId} and claim your B3TR rewards.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="tokenId">Verified Token ID</Label>
+                <Input id="tokenId" type="text" value={selectedTokenId} readOnly className="bg-gray-100 dark:bg-gray-800" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sponsorAddress">Sponsor Address (Optional)</Label>
+                <Input
+                  id="sponsorAddress"
+                  placeholder="Enter sponsor address (0x...)"
+                  value={sponsorAddress}
+                  onChange={(e) => setSponsorAddress(e.target.value)}
+                  className={errors.sponsorAddress ? 'border-red-500' : ''}
+                />
+                {errors.sponsorAddress && <p className="text-red-500 text-sm">{errors.sponsorAddress}</p>}
+              </div>
+              <Button onClick={handleRetire} className="w-full" disabled={isPending}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Retire & Claim Reward'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 py-12">
       <div className="container mx-auto px-4">
         <RewardsBalance />
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 max-w-2xl mx-auto">
+          <h1 className="text-4xl font-bold mb-4">My Recyclable Products</h1>
           <p className="text-lg text-gray-700 dark:text-gray-300">
-            Recycling your Digital Twin NFT helps promote sustainability by retiring the product and claiming B3TR rewards for your contribution to the circular economy.
+            Select one of your active Digital Twins to begin the recycling process and claim your B3TR rewards.
           </p>
         </div>
-        <Card className="w-full max-w-md lg:max-w-lg mx-auto">
-          <CardHeader>
-            <CardTitle>Recycle Product</CardTitle>
-            <CardDescription>
-              Retire a Digital Twin NFT to claim B3TR rewards. Enter the token ID of the product you wish to recycle.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tokenId">Token ID</Label>
-              <Input
-                id="tokenId"
-                type="number"
-                placeholder="Enter token ID"
-                value={tokenId}
-                onChange={(e) => setTokenId(e.target.value)}
-                className={errors.tokenId ? 'border-red-500' : ''}
-              />
-              {errors.tokenId && <p className="text-red-500 text-sm">{errors.tokenId}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sponsorAddress">Sponsor Address (Optional)</Label>
-              <Input
-                id="sponsorAddress"
-                placeholder="Enter sponsor address (0x...)"
-                value={sponsorAddress}
-                onChange={(e) => setSponsorAddress(e.target.value)}
-                className={errors.sponsorAddress ? 'border-red-500' : ''}
-              />
-              {errors.sponsorAddress && <p className="text-red-500 text-sm">{errors.sponsorAddress}</p>}
-              <p className="text-xs text-gray-500">If provided, the sponsor must have BRAND_ROLE to cover transaction fees.</p>
-            </div>
-            <Button onClick={handleRetire} className="w-full" disabled={isPending}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Retire & Claim Reward
-            </Button>
-            <Button
-              variant="outline"
-              onClick={clearForm}
-              className="w-full mt-2"
-              disabled={isPending}
-            >
-              Clear
-            </Button>
-            <p className="text-sm text-gray-500 text-center">
-              Retiring as: {address.slice(0, 6)}...{address.slice(-4)}
-            </p>
-          </CardContent>
-        </Card>
+
+        {isLoadingTokens ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-t-lg"></div>
+                <CardContent className="p-4 space-y-2">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                  <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : recyclableTokens.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {recyclableTokens.map(token => (
+              <Card key={token.tokenId} className="hover:shadow-lg transition-shadow">
+                <img src={token.image} alt={token.name} className="w-full h-48 object-cover rounded-t-lg" />
+                <CardContent className="p-4">
+                  <h3 className="font-semibold truncate">{token.name}</h3>
+                  <p className="text-sm text-gray-500">ID: {token.tokenId}</p>
+                  <Button className="w-full mt-4" onClick={() => handleSelectToken(token.tokenId)}>
+                    Select
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 border-2 border-dashed rounded-lg">
+            <Inbox className="w-16 h-16 mx-auto text-gray-400" />
+            <h2 className="mt-6 text-xl font-semibold">No Recyclable Products Found</h2>
+            <p className="mt-2 text-gray-500">It looks like you don&apos;t own any active Digital Twins. Mint one to get started!</p>
+          </div>
+        )}
       </div>
     </div>
   );
